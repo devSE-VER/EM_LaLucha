@@ -18,17 +18,20 @@ def get_env_engine():
     return engine
 
 
-
-def check_file_exist(fname:str, cnx_str:str, schema:str, table:str):
-    engine = create_engine(cnx_str, echo=False)    
-    qry_str = text(f"select fname from {schema}.{table} where fname = '{fname}'")
-
-    with engine.connect() as conn:
-        file_exist = conn.execute(qry_str).scalar()
-        conn.close()
-    
-    return bool(file_exist)
-
+def get_engines(servers:dict):
+    engines = []
+    for srv, cnx_data in servers.items():
+        conn_str = f"mssql+pyodbc://{cnx_data['USER']}:{quote_plus(cnx_data['PW'])}@{cnx_data['SERVER']}/{cnx_data['DB']}?driver={cnx_data['DRV']}"
+        print(f"{srv=}...", end='... ')
+        engine = create_engine(conn_str, echo=False)
+        engines.append({
+            'srv':srv,
+            'conn_str': conn_str,
+            'engine':engine,
+            'db': cnx_data['DB'],
+            'file_exist':True
+        })
+    return engines
 
 
 def check_data_exist(engine, schema:str, table:str, **kargs):
@@ -45,24 +48,9 @@ def check_data_exist(engine, schema:str, table:str, **kargs):
     return bool(file_exist)
 
 
-
-def get_engines(servers:dict):
-    engines = []
-    for srv, cnx_data in servers.items():
-        conn_str = f"mssql+pyodbc://{cnx_data['USER']}:{quote_plus(cnx_data['PW'])}@{cnx_data['SERVER']}/{cnx_data['DB']}?driver={cnx_data['DRV']}"
-        engine = create_engine(conn_str, echo=False)
-        engines.append({
-            'srv':srv,
-            'conn_str': conn_str,
-            'engine':engine,
-            'db': cnx_data['DB'],
-            'file_exist':True
-        })
-    return engines
-
-
 def get_validated_engine(cnx_data:str)->Engine:
     conn_str = f"mssql+pyodbc://{cnx_data['USER']}:{quote_plus(cnx_data['PW'])}@{cnx_data['SERVER']}/{cnx_data['DB']}?driver={cnx_data['DRV']}"
+
     try:
         engine = create_engine(conn_str, echo=False)
         with engine.connect() as conn:
@@ -71,5 +59,5 @@ def get_validated_engine(cnx_data:str)->Engine:
         return engine
     
     except Exception as e:
-        # print(f"Engine validation: {e}")
+        print(f"Engine validation: {e}")
         return None
