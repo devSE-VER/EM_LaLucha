@@ -2,8 +2,6 @@
 import pandas as pd
 from sqlalchemy import text
 import constants as c
-from dotenv import load_dotenv
-from os import getenv
 
 from process.functions import get_files
 from process.database import get_validated_engine
@@ -56,59 +54,30 @@ def process_offers(account:str, engine):
         
         except Exception as e:
             print(f"Insert error: {e}")
-            break
 
 
 
 if __name__ == '__main__':
-    load_dotenv()
-    
-    SERVER_SE = {
-        'SERVER': getenv('SERVER_SE'),
-        'USER': getenv('USER_SE'),
-        'PW': getenv('PW_SE')
+
+    servers = {
+        'SRV_SE': c.SERVER_SE,
+        'SRV_SAAVI': c.SERVER_SAAVI,
     }
 
-    SERVER_SAAVI = {
-        'SERVER': getenv('SERVER_SAAVI'),
-        'USER': getenv('USER_SAAVI'),
-        'PW': getenv('PW_SAAVI'),
-        'DRV': getenv('SQL_DRIVER'),
-    }
-
-    PARTICIPANTS = {
-        'G090': { # Los Ramones
-            'account': 'EM_LosRamones',
-            'servers':{
-                'SRV_SE': {'DB': 'EM_LosRamones', 'ENABLE': True, **SERVER_SE}
-            },
-        },
-
-        'G107': { # La Lucha
-            'account': 'EM_LaLucha',
-            'servers':{
-                'SRV_SE': {'DB': 'EM_LaLucha', 'ENABLE': True, **SERVER_SE},
-                'SRV_SAAVI': {'DB': 'BD_Seguro', 'ENABLE': False, **SERVER_SAAVI},
-            },
-        },
-
-        'G075|C045': { # Tierra Mojada
-            'account': 'EM_TierraMojada',
-            'servers':{
-                'SRV_SE': {'DB': 'EM_TierraMojada', 'ENABLE': True, **SERVER_SE},
-                'SRV_SAAVI': {'DB': 'BD_Seguro', 'ENABLE': True, **SERVER_SAAVI},
-            },
-        }
-    }
-
-    #
-    for pm, pm_data in PARTICIPANTS.items():
-        print(f"\n------------{pm=}------------")
-
-        for srv, srv_data in pm_data['servers'].items():
+    for srv, srv_data in servers.items():
+        for pm, pm_data in c.PARTICIPANTS.items():
+            print(f"{pm=}")
+            
+            # update db
+            srv_db = pm_data['servers'].get(srv)
+            if not srv_db:
+                continue
+            srv_data.update(srv_db)
+            
             if srv_data['ENABLE']:
                 engine = get_validated_engine(srv_data)
-                print(f"{srv=}...", "Ok!" if engine else "Failed!")
+                print(f"{srv=} on {srv_data['DB']} DB...", "Ok!" if engine else "Failed!")
                 
                 if engine:
                     process_offers(pm_data['account'], engine)
+                    engine.dispose()
